@@ -1,40 +1,32 @@
 #ifndef __TABROUT_H__
 #define __TABROUT_H__
 
-#define NB_MAX_ENTRY 10
+#define NB_MAX_ENTRY 30
+#define MAX_IP_SIZE 16
 #include <stdbool.h>
 
 // Routing Table
 // ===============
+typedef enum {TERMINAL=0,ROUTER=1} nodeType;
+
+
+typedef struct s_Entry {
+    char destination[MAX_IP_SIZE];
+    char nextHop[MAX_IP_SIZE];
+    unsigned int port;
+    unsigned int weight;
+    nodeType type;
+}entry;
+
 typedef struct {
     unsigned short int nb_entry;
-    char * tab_entry[NB_MAX_ENTRY];
-} routing_table_t;
+    entry entries[NB_MAX_ENTRY];
+} routingTable;
 
 
-/* ===================================================== */
-/* UPLOAD FROM CONFIGURATION FILE                        */
-/* Fonction qui initialise la Table de Routage initiale  */
-/* par lecture d'un fichier de configuration initiale    */
-/* dont l'identifiant est passé en argument              */
-void init_routing_table(routing_table_t * rt, char * fileConfig);
+// OPERATOR :
 
-/* ===================================================== */
-/* DISPLAY CURRENT ROUTING TABLE CONTENT                 */
-/* Fonction qui affiche à l'écran la Table de Routage    */
-/* du routeur dont l'identifiant est précisé             */
-void display_routing_table(routing_table_t * rt, char * id_router);
-
-
-/* ===================================================== */
-/* ADD ONE ENTRY                                         */
-/* Fonction qui rajoute une entrée en fin de la Table de */
-/* routage                                               */
-void add_entry_routing_table(routing_table_t * rt, char * entry);
-
-/* IS ALREADY PRESENT AN ENTRY ?                          */
-/* Fonction qui détecte si une entrée donnée existe déjà  */
-/* dans la Table de routage                               */
-bool is_present_entry_table(routing_table_t * rt, char * entry);
-
+void init_routingTable(routingTable * rt, char * fileConfig);
+void add_routingTable(routingTable *rt, char *destination, unsigned int port, unsigned int weight, nodeType type);
+void display_routingTable(routingTable *rt);
 #endif

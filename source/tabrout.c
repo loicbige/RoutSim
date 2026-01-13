@@ -1,74 +1,51 @@
-
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "../Lib/tabrout.h"
 
-/* ===================================================== */
-/* UPLOAD FROM CONFIGURATION FILE                        */
-/* Fonction qui initialise la Table de Routage initiale  */
-/* par lecture d'un fichier de configuration initiale    */
-/* dont l'identifiant est passé en argument              */
-void init_routing_table(routing_table_t * rt, char * fileConfig) {
-  FILE *fichier = NULL;
-  char ligne[64];
-  int i=0;
+#include <stdlib.h>
 
-  fichier = fopen(fileConfig, "rt");
-  if (fichier == NULL) {
-    perror("[Config] Error opening configuration file.\n");
-    exit(EXIT_FAILURE);
-  }
 
-  printf("\nROUTEUR : Loading Configuration intiale\n");
-  while (!feof(fichier)) {
-      // read line
-      rt->tab_entry[i] = (char *) malloc(sizeof(ligne));
-      fgets(ligne, sizeof(ligne), fichier);
-      ligne[strlen(ligne)-1]='\0';
-      strcpy(rt->tab_entry[i],ligne);
-      //printf("\t %d",i);
-      i++;// remove '\n'
-      }
-  // ending string array with an empty string
-  rt->nb_entry = i-1;
-  //printf("\t NB final : %d\n",rt->nb_entry);
-  fclose(fichier);
-  return ;
+void init_routingTable(routingTable * rt, char * fileConfig) {
+    FILE *fc = fopen(fileConfig, "r");
+    if (fc == NULL) {
+        perror("[CONFIG] : Error opening configuration file.");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("\n[ROUTEUR] : Loading Configuration intiale\n");
+    fscanf(fc, "%hud", &(rt->nb_entry));
+
+    for (int i = 0; i < rt->nb_entry && !feof(fc); i++) {
+        unsigned short int type;
+        fscanf(fc, "%s %u %u %hud", rt->entries[i].destination,&rt->entries[i].port, &rt->entries[i].weight, &type);
+        rt->entries[i].type = type;
+    }
+
+    fclose(fc);
 }
 
-/* ===================================================== */
-/* DISPLAY CURRENT ROUTING TABLE CONTENT                 */
-/* Fonction qui affiche à l'écran la Table de Routage    */
-/* du routeur dont l'identifiant est précisé             */
-
-void display_routing_table(routing_table_t * rt, char * id_router) {
-  printf("\nROUTEUR : ETAT courant de la TABLE de ROUTAGE de %s",id_router);
-  printf("\nROUTEUR : NB d'ENTREES : %d",rt->nb_entry);
-  for (int i=0; i<rt->nb_entry; i++)
-    printf("\n\t%s",rt->tab_entry[i]);
-  printf("\n");
+void add_routingTable(routingTable *rt, char *destination, unsigned int port, unsigned int weight, nodeType type)
+{
+    if (rt->nb_entry == NB_MAX_ENTRY) {
+        fprintf(stderr, "[CONFIG] : Too many routes.\n");
+        return;
+    }
+    strcat(rt->entries[rt->nb_entry].destination, destination );
+    rt->entries[rt->nb_entry].type = type;
+    rt->entries[rt->nb_entry].port = port;
+    rt->entries[rt->nb_entry].weight = weight;
+    rt->nb_entry++;
 }
 
-/* ===================================================== */
-/* ADD ONE ENTRY                                         */
-/* Fonction qui rajoute une entrée en fin de la Table de */
-/* routage                                               */
 
-void add_entry_routing_table(routing_table_t * rt, char * entry) {
-  rt->tab_entry[rt->nb_entry] = (char *)malloc(strlen(entry)+1);
-  strcpy(rt->tab_entry[rt->nb_entry], entry);
-  rt->nb_entry++;
+void display_routingTable(routingTable *rt) {
+    for (int i = 0; i < rt->nb_entry; i++) {
+        int type = rt->entries[i].type;
+        printf("[%s]:%d weight : %d & type=%d\n",rt->entries[i].destination,rt->entries[i].port, rt->entries[i].weight, type);
+
+    }
+    printf("\n");
+
 }
 
-/* IS ALREADY PRESENT AN ENTRY ?                          */
-/* Fonction qui détecte si une entrée donnée existe déjà  */
-/* dans la Table de routage                               */
-
-bool is_present_entry_table(routing_table_t * rt, char * entry) {
-  for (int i=0; i<rt->nb_entry; i++) {
-    if (strcmp(rt->tab_entry[i],entry) == 0) return(true);
-  }
-  return(false);
-}
