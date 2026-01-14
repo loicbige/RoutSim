@@ -21,7 +21,7 @@ LIB_DIR = Lib
 OBJ_DIR = obj
 
 # Fichiers
-EXEC = PasswordManager
+EXEC = routP
 SRC = $(wildcard $(SRC_DIR)/*.c)
 OBJ = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC))
 
