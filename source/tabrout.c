@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 
 #include "../Lib/tabrout.h"
 
@@ -17,32 +16,35 @@ void init_routingTable(routingTable * rt, char * fileConfig) {
     fscanf(fc, "%hud", &(rt->nb_entry));
 
     for (int i = 0; i < rt->nb_entry && !feof(fc); i++) {
-        unsigned short int type;
-        fscanf(fc, "%s %u %u %hud", rt->entries[i].destination,&rt->entries[i].port, &rt->entries[i].weight, &type);
+        uint8_t type;
+        fscanf(fc, "%s %hu %hu %hhu", rt->entries[i].destination,&rt->entries[i].port, &rt->entries[i].weight, &type);
         rt->entries[i].type = type;
     }
 
     fclose(fc);
 }
 
-void add_routingTable(routingTable *rt, char *destination, unsigned int port, unsigned int weight, nodeType type)
+void add_routingTable(routingTable *rt,char *entry)
 {
     if (rt->nb_entry == NB_MAX_ENTRY) {
         fprintf(stderr, "[CONFIG] : Too many routes.\n");
         return;
     }
-    strcat(rt->entries[rt->nb_entry].destination, destination );
+    uint8_t type;
+    sscanf(entry, "%s %hu %hu %hhu",
+        rt->entries[rt->nb_entry].destination,
+        &rt->entries[rt->nb_entry].port,
+        &rt->entries[rt->nb_entry].weight,
+        &type);
     rt->entries[rt->nb_entry].type = type;
-    rt->entries[rt->nb_entry].port = port;
-    rt->entries[rt->nb_entry].weight = weight;
     rt->nb_entry++;
 }
 
 
 void display_routingTable(routingTable *rt) {
     for (int i = 0; i < rt->nb_entry; i++) {
-        int type = rt->entries[i].type;
-        printf("[%s]:%d weight : %d & type=%d\n",rt->entries[i].destination,rt->entries[i].port, rt->entries[i].weight, type);
+        uint8_t type = rt->entries[i].type;
+        printf("[%s]:%hu weight : %hu & type=%hhu\n",rt->entries[i].destination,rt->entries[i].port, rt->entries[i].weight, type);
 
     }
     printf("\n");

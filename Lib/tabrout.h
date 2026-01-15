@@ -3,7 +3,7 @@
 
 #define NB_MAX_ENTRY 30
 #define MAX_IP_SIZE 16
-#include <stdbool.h>
+#include <stdint.h>
 
 // Routing Table
 // ===============
@@ -13,8 +13,8 @@ typedef enum {TERMINAL=0,ROUTER=1} nodeType;
 typedef struct s_Entry {
     char destination[MAX_IP_SIZE];
     char nextHop[MAX_IP_SIZE];
-    unsigned int port;
-    unsigned int weight;
+    uint16_t port;
+    uint16_t weight;
     nodeType type;
 }entry;
 
@@ -27,6 +27,6 @@ typedef struct {
 // OPERATOR :
 
 void init_routingTable(routingTable * rt, char * fileConfig);
-void add_routingTable(routingTable *rt, char *destination, unsigned int port, unsigned int weight, nodeType type);
+void add_routingTable(routingTable *rt,char *entry);
 void display_routingTable(routingTable *rt);
 #endif
