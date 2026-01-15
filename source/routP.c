@@ -40,7 +40,7 @@ void createRoutingTable(routingTable *myRoutingTable, const char *adr, const cha
 void sendtoDashboard(char *type, char* message, int id) {
   int dashSock = socket(AF_INET, SOCK_DGRAM,0);
   if (dashSock < 0) {
-    perror("dahs socket");
+    perror("dash socket");
     exit(EXIT_FAILURE);
   }
 
@@ -67,16 +67,16 @@ int sendRoutingTable(routingTable *rt, int sock, struct sockaddr_in *neighborAdr
 
   if (neighborAdr != NULL) {
     if (sendto(sock,&rt->nb_entry, sizeof(rt->nb_entry), 0, (struct sockaddr *)neighborAdr, sizeof(struct sockaddr_in)) < 0) {
-      perror("sendto nbentry");
+      perror("[ROUTER] : sendto nbentry");
       exit(EXIT_FAILURE);
     }
     char buff[BUF_SIZE];
-
+    memset(buff, 0, BUF_SIZE);
     for (int i = 0; i < rt->nb_entry; i++) {
       memset(buff, 0, BUF_SIZE);
       snprintf(buff, BUF_SIZE, "%s %hu %hu %hhu", rt->entries[i].destination, rt->entries[i].port, rt->entries[i].weight, (uint8_t)rt->entries[i].type);
       if (sendto(sock, buff,strlen(buff),0, (struct sockaddr *)neighborAdr,sizeof(struct sockaddr_in)) < 0) {
-        perror("sendto loop");
+        perror("[ROUTER] : sendto loop");
         exit(EXIT_FAILURE);
       }
 
@@ -90,7 +90,7 @@ else {
 }
 
 
-int recvRoutingTable(int sock) {
+int recvRoutingTable(int sock, routingTable *rt) {
   struct sockaddr_in neighborAdr;
   memset(&neighborAdr, 0, sizeof(struct sockaddr_in));
   socklen_t neighborAdrLen = sizeof(struct sockaddr_in);
@@ -99,31 +99,37 @@ int recvRoutingTable(int sock) {
   memset(buff, 0, BUF_SIZE);
   if (recvfrom(sock,&nbEntries,sizeof(nbEntries), 0,
     (struct sockaddr *)&neighborAdr, &neighborAdrLen ) < 0) {
-    perror("recvfrom nbentries");
+    perror("[ROUTER] : recvfrom nbentries");
     exit(EXIT_FAILURE);
     }
+  printf("[ROUTEUR] : received %d entries\n", nbEntries);
   for (int i = 0; i < nbEntries; i++) {
     memset(buff, 0, BUF_SIZE);
     if (recvfrom(sock,buff,BUF_SIZE, 0,(struct sockaddr *)&neighborAdr, &neighborAdrLen)<0) {
-      perror("recvfrom loop");
+      perror("[ROUTER] : recvfrom loop");
       exit(EXIT_FAILURE);
     }
+    if (add_routingTable(rt, buff) == EXIT_FAILURE) {
+      perror("[ROUTER] : error adding routing table");
+      continue;
+    }
   }
+
   return 0;
 }
 
-void findNeighborAndSendRoutingTable(routingTable rt, int mySock) {
+void findNeighborAndSendRoutingTable(routingTable *rt, int mySock) {
   struct sockaddr_in neighborAdr;
-  for (int  i = 0;  i < rt.nb_entry; ++ i) {
-    if (rt.entries[i].type == ROUTER) {
+  for (int  i = 0;  i < rt->nb_entry; ++ i) {
+    if (rt->entries[i].type == ROUTER) {
       memset(&neighborAdr, 0, sizeof(struct sockaddr_in));
       neighborAdr.sin_family = AF_INET;
-      neighborAdr.sin_port = htons(rt.entries[i].port);
+      neighborAdr.sin_port = htons(rt->entries[i].port);
       if (inet_pton(AF_INET, LOCALHOST, &neighborAdr.sin_addr) <= 0) {
         perror("inet_pton neighbor sendroutingtable");
         exit(EXIT_FAILURE);
       }
-      sendRoutingTable(&rt,mySock,&neighborAdr);
+      sendRoutingTable(rt,mySock,&neighborAdr);
     }
   }
 }
@@ -168,7 +174,7 @@ int main(int argc, char const *argv[])
     fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(mySock, &readfds);
-    struct timeval tv = {1,0} ;
+    struct timeval tv = {5,0} ;
     int selectValue = select(mySock+1, &readfds, NULL, NULL, &tv);
 
 
@@ -177,12 +183,13 @@ int main(int argc, char const *argv[])
       continue;
     }
     if (selectValue == 0) {
-      findNeighborAndSendRoutingTable(rt, mySock);
+      findNeighborAndSendRoutingTable(&rt, mySock);
       continue;
 
     }
     if (FD_ISSET(mySock, &readfds)) {
-      recvRoutingTable(mySock);
+      display_routingTable(&rt);
+      recvRoutingTable(mySock, &rt);
     }
   }
   return 1;

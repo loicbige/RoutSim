@@ -1,9 +1,10 @@
 #ifndef __TABROUT_H__
 #define __TABROUT_H__
 
-#define NB_MAX_ENTRY 30
-#define MAX_IP_SIZE 16
 #include <stdint.h>
+#include <stdbool.h>
+#define NB_MAX_ENTRY 30
+#define MAX_IP_SIZE 32
 
 // Routing Table
 // ===============
@@ -27,6 +28,8 @@ typedef struct {
 // OPERATOR :
 
 void init_routingTable(routingTable * rt, char * fileConfig);
-void add_routingTable(routingTable *rt,char *entry);
+int add_routingTable(routingTable *rt,char *entry);
 void display_routingTable(routingTable *rt);
+bool isInRoutingTable(routingTable *rt,char *entry);
+bool searchInRoutingTable(routingTable *rt, char*entry);
 #endif
