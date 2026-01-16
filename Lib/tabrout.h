@@ -28,10 +28,11 @@ typedef struct {
 // OPERATOR :
 
 void init_routingTable(routingTable * rt, char * fileConfig);
-int add_routingTable(routingTable *rt,char *entry);
+int add_routingTable(routingTable *rt,entry *e);
+
 void display_routingTable(routingTable *rt);
 void displayEntry(entry *e);
-bool isInRoutingTable(routingTable *rt,char *entry);
-bool isMyRoutingAdress(const char* ip, const uint16_t port,const char *entry);
-bool searchInRoutingTable(routingTable *rt, char*entry);
+
+bool isEntryEquals(const entry *e1,const entry *e2);
+bool searchInRoutingTable(routingTable *rt,entry *e);
 #endif
