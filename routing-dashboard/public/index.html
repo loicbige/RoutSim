@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Routage Dynamique</title>
+
+    <!-- Vis.js Network -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" rel="stylesheet">
+
+    <!-- Socket.io -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px 30px;
+            border-bottom: 2px solid #00d4ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #00ff88;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        .graph-container {
+            flex: 1;
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            margin: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        #network {
+            width: 100%;
+            height: 100%;
+        }
+
+        .stats-overlay {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00d4ff;
+            min-width: 180px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .logs-container {
+            width: 400px;
+            background: rgba(0, 0, 0, 0.5);
+            margin: 10px 10px 10px 0;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .logs-header {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid #00d4ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logs-header h3 {
+            color: #00d4ff;
+            font-size: 16px;
+        }
+
+        .clear-btn {
+            background: #ff4444;
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .clear-btn:hover {
+            background: #ff6666;
+        }
+
+        .logs-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #00d4ff;
+            border-radius: 3px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-timestamp {
+            color: #888;
+            font-size: 10px;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .log-type.ping {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .log-type.link {
+            background: #00d4ff;
+            color: #000;
+        }
+
+        .log-type.error {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .log-data {
+            color: #e0e0e0;
+            margin-top: 5px;
+            white-space: pre-wrap;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00a8cc;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <circle cx="6" cy="6" r="2"/>
+            <circle cx="18" cy="6" r="2"/>
+            <circle cx="6" cy="18" r="2"/>
+            <circle cx="18" cy="18" r="2"/>
+            <line x1="12" y1="9" x2="12" y2="15"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+        </svg>
+        Dashboard Routage Dynamique
+    </h1>
+    <div class="status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connexion...</span>
+    </div>
+</div>
+
+<div class="container">
+    <div class="graph-container">
+        <div id="network"></div>
+        <div class="stats-overlay">
+            <div class="stat-item">
+                <span class="stat-label">Routeurs:</span>
+                <span class="stat-value" id="nodeCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Liens:</span>
+                <span class="stat-value" id="linkCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Messages:</span>
+                <span class="stat-value" id="msgCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="logs-container">
+        <div class="logs-header">
+            <h3>Console de Logs</h3>
+            <button class="clear-btn" onclick="clearLogs()">Effacer</button>
+        </div>
+        <div class="logs-content" id="logs"></div>
+    </div>
+</div>
+
+<script>
+    // Initialisation Socket.io
+    const socket = io();
+
+    // Compteurs
+    let messageCount = 0;
+
+    // Initialisation du graphe Vis.js
+    const nodes = new vis.DataSet();
+    const edges = new vis.DataSet();
+
+    const container = document.getElementById('network');
+    const data = { nodes, edges };
+    const options = {
+        nodes: {
+            shape: 'dot',
+            size: 25,
+            font: {
+                size: 14,
+                color: '#ffffff',
+                face: 'Segoe UI'
+            },
+            borderWidth: 3,
+            borderWidthSelected: 4,
+            color: {
+                border: '#00d4ff',
+                background: '#1a1a2e',
+                highlight: {
+                    border: '#00ff88',
+                    background: '#2a2a3e'
+                }
+            }
+        },
+        edges: {
+            width: 2,
+            color: {
+                color: '#00d4ff',
+                highlight: '#00ff88'
+            },
+            smooth: {
+                type: 'continuous'
+            }
+        },
+        physics: {
+            enabled: true,
+            barnesHut: {
+                gravitationalConstant: -8000,
+                centralGravity: 0.3,
+                springLength: 150,
+                springConstant: 0.04
+            },
+            stabilization: {
+                iterations: 150
+            }
+        },
+        interaction: {
+            hover: true,
+            tooltipDelay: 200
+        }
+    };
+
+    const network = new vis.Network(container, data, options);
+
+    // Gestion de la connexion
+    socket.on('connect', () => {
+        updateStatus(true);
+        addLog('SYSTEM', 'Connecté au serveur');
+    });
+
+    socket.on('disconnect', () => {
+        updateStatus(false);
+        addLog('ERROR', 'Déconnecté du serveur');
+    });
+
+    // État initial
+    socket.on('initial-state', (state) => {
+        state.nodes.forEach(node => {
+            nodes.add({ id: node.id, label: node.id, title: `IP: ${node.ip}` });
+        });
+        state.links.forEach(link => {
+            edges.add({ id: `${link.from}-${link.to}`, from: link.from, to: link.to });
+        });
+        updateStats();
+    });
+
+    // Mise à jour des nœuds
+    socket.on('node-update', ({ node, isNew }) => {
+        if (isNew) {
+            nodes.add({ id: node.id, label: node.id, title: `IP: ${node.ip}` });
+        } else {
+            nodes.update({ id: node.id, title: `IP: ${node.ip}` });
+        }
+        updateStats();
+    });
+
+    // Suppression de nœud
+    socket.on('node-remove', ({ id }) => {
+        nodes.remove(id);
+        updateStats();
+    });
+
+    // Mise à jour des liens
+    socket.on('link-update', ({ link, isNew }) => {
+        const edgeId = `${link.from}-${link.to}`;
+        if (isNew) {
+            edges.add({ id: edgeId, from: link.from, to: link.to });
+        }
+        updateStats();
+    });
+
+    // Suppression de lien
+    socket.on('link-remove', ({ from, to }) => {
+        edges.remove(`${from}-${to}`);
+        updateStats();
+    });
+
+    // Messages bruts
+    socket.on('raw-message', ({ timestamp, data }) => {
+        messageCount++;
+        addLog(data.type, JSON.stringify(data, null, 2), timestamp);
+        document.getElementById('msgCount').textContent = messageCount;
+    });
+
+    // Erreurs
+    socket.on('error', ({ timestamp, message, raw }) => {
+        addLog('ERROR', `${message}\n${raw}`, timestamp);
+    });
+
+    // Fonctions utilitaires
+    function updateStatus(connected) {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        if (connected) {
+            dot.classList.add('connected');
+            text.textContent = 'Connecté';
+        } else {
+            dot.classList.remove('connected');
+            text.textContent = 'Déconnecté';
+        }
+    }
+
+    function updateStats() {
+        document.getElementById('nodeCount').textContent = nodes.length;
+        document.getElementById('linkCount').textContent = edges.length;
+    }
+
+    function addLog(type, content, timestamp) {
+        const logsDiv = document.getElementById('logs');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+
+        const ts = timestamp || new Date().toISOString();
+        const timeStr = new Date(ts).toLocaleTimeString('fr-FR');
+
+        entry.innerHTML = `
+                <div class="log-timestamp">[${timeStr}]</div>
+                <span class="log-type ${type.toLowerCase()}">${type}</span>
+                <div class="log-data">${content}</div>
+            `;
+
+        logsDiv.insertBefore(entry, logsDiv.firstChild);
+
+        // Limiter à 50 entrées
+        while (logsDiv.children.length > 50) {
+            logsDiv.removeChild(logsDiv.lastChild);
+        }
+    }
+
+    function clearLogs() {
+        document.getElementById('logs').innerHTML = '';
+        messageCount = 0;
+        document.getElementById('msgCount').textContent = '0';
+    }
+</script>
+</body>
+</html>
