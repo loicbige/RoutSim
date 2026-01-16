@@ -46,17 +46,8 @@ bool isEntryEquals(const entry *e1,const entry *e2) {
 }
 
 bool searchInRoutingTable(routingTable *rt,entry *e) {
-    printf("[SEARCH] : Searching the entry ");
-    displayEntry(e);
-    printf("in the routing table....\n");
     for (int i = 0; i < rt->nb_entry; ++i) {
-        printf("[SEARCH] : Compare with entry");
-        displayEntry(&rt->entries[i]);
-        printf("\n");
-        if (isEntryEquals(&rt->entries[i], e)) {
-            printf("[SEARCH] : Found entry ");
-            displayEntry(&rt->entries[i]);
-            printf(" in the routing table\n");
+        if (isEntryEquals(&rt->entries[i], e)) {;
             return true;
         }
     }
@@ -72,14 +63,8 @@ int add_routingTable(routingTable *rt,entry *e)
         return EXIT_FAILURE;
     }
     if (!searchInRoutingTable(rt, e) && !isEntryEquals(e, &rt->entries[0])) {
-        printf("[ADD] : Adding entry ");
-        displayEntry(e);
-        printf(" in the routing table\n");
-
         rt->entries[nbEntries] = *e;
         rt->nb_entry++;
-    } else {
-        printf("[ADD] : Entry already exists.\n");
     }
     return EXIT_SUCCESS;
 }
