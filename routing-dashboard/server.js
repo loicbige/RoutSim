@@ -17,7 +17,7 @@ const udpServer = dgram.createSocket('udp4');
 // État du réseau
 const networkState = {
   nodes: new Map(), // routeurs: {id, ip, lastSeen}
-  links: new Map()  // liens: {from-to: {from, to, status}}
+  links: new Map()  // liens: {id, from, to, status, lastUpdate} (clé canonique non orientée)
 };
 
 // Servir les fichiers statiques
@@ -41,6 +41,35 @@ io.on('connection', (socket) => {
     console.log('✗ Client Web déconnecté:', socket.id);
   });
 });
+
+/* ===========================
+   LIENS NON ORIENTÉS (FIX)
+   =========================== */
+
+function compareRouterIds(a, b) {
+  // Si format "R<number>", on compare numériquement (R2 < R10)
+  const ma = /^R(\d+)$/.exec(a);
+  const mb = /^R(\d+)$/.exec(b);
+  if (ma && mb) return Number(ma[1]) - Number(mb[1]);
+
+  // Sinon fallback alphabétique
+  return String(a).localeCompare(String(b), 'en');
+}
+
+function canonicalLink(from, to) {
+  const a = String(from);
+  const b = String(to);
+  return compareRouterIds(a, b) <= 0 ? [a, b] : [b, a];
+}
+
+function canonicalLinkId(from, to) {
+  const [a, b] = canonicalLink(from, to);
+  return `${a}-${b}`;
+}
+
+/* ===========================
+   UDP
+   =========================== */
 
 // Traitement des messages UDP
 udpServer.on('message', (msg, rinfo) => {
@@ -108,7 +137,7 @@ function handlePing(data, timestamp) {
   console.log(`${isNew ? '+ Nouveau' : '↻ Mise à jour'} routeur: ${id}`);
 }
 
-// Gestion des annonces LINK
+// Gestion des annonces LINK (non orienté)
 function handleLink(data, timestamp) {
   const { from, to, status } = data;
 
@@ -117,10 +146,13 @@ function handleLink(data, timestamp) {
     return;
   }
 
-  const linkId = `${from}-${to}`;
+  const [a, b] = canonicalLink(from, to);
+  const linkId = `${a}-${b}`;
+
   const link = {
-    from,
-    to,
+    id: linkId,
+    from: a,
+    to: b,
     status,
     lastUpdate: timestamp
   };
@@ -130,11 +162,12 @@ function handleLink(data, timestamp) {
   if (status === 'UP') {
     networkState.links.set(linkId, link);
     io.emit('link-update', { link, isNew });
-    console.log(`${isNew ? '+ Nouveau' : '↻ Mise à jour'} lien: ${from} ↔ ${to} (${status})`);
+    console.log(`${isNew ? '+ Nouveau' : '↻ Mise à jour'} lien: ${a} ↔ ${b} (${status})`);
   } else if (status === 'DOWN') {
     networkState.links.delete(linkId);
-    io.emit('link-remove', { from, to });
-    console.log(`✗ Lien supprimé: ${from} ↔ ${to} (DOWN)`);
+    // On envoie aussi l'id canonique pour que le front supprime sans ambiguïté
+    io.emit('link-remove', { id: linkId, from: a, to: b });
+    console.log(`✗ Lien supprimé: ${a} ↔ ${b} (DOWN)`);
   }
 }
 
@@ -190,7 +223,7 @@ setInterval(() => {
       networkState.links.forEach((link, linkId) => {
         if (link.from === id || link.to === id) {
           networkState.links.delete(linkId);
-          io.emit('link-remove', link);
+          io.emit('link-remove', { id: linkId, from: link.from, to: link.to });
         }
       });
 
