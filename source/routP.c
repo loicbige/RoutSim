@@ -9,13 +9,13 @@
 #include <sys/select.h>
 #include <stdbool.h>
 
+#include "../Lib/dashboard.h"
 #include "../Lib/tabrout.h"
 
 #define BUF_SIZE 64        // we should receive less...
 #define IPV4_ADR_STRLEN 16 // == INET_ADDRSTRLEN
 #define LOCALHOST "127.0.0.1"
-#define DASHBOARD_PORT 8080
-#define DASHBOARD_IP "127.0.0.1"
+
 #define NO_BASE_PORT 17900
 
 
@@ -36,31 +36,6 @@ void createRoutingTable(routingTable *myRoutingTable, const char *adr, const cha
   init_routingTable(myRoutingTable, idInitConfigFile);
   printf("[ROUTEUR] : %d entrées initialement chargées \n", myRoutingTable->nb_entry);
   display_routingTable(myRoutingTable);
-}
-void sendtoDashboard(char *type, char* message, int id) {
-  int dashSock = socket(AF_INET, SOCK_DGRAM,0);
-  if (dashSock < 0) {
-    perror("dash socket");
-    exit(EXIT_FAILURE);
-  }
-
-  struct sockaddr_in dashAdr;
-  memset(&dashAdr, 0, sizeof(dashAdr));
-  dashAdr.sin_family = AF_INET;
-  dashAdr.sin_port = htons(DASHBOARD_PORT);
-  if (inet_pton(AF_INET, LOCALHOST, &dashAdr.sin_addr) <= 0) {
-    perror("inet_pton");
-    exit(EXIT_FAILURE);
-  }
-  char buf[BUF_SIZE];
-  memset(buf, 0, BUF_SIZE);
-  sprintf(buf, "{\"id\": \"R%d\", \"type\": \"%s\", %s}", id,type, message);
-
-  if (sendto(dashSock, buf, strlen(buf), 0, (struct sockaddr *)&dashAdr, sizeof(struct sockaddr_in)) < 0) {
-    perror("sendto");
-    exit(EXIT_FAILURE);
-  }
-  close(dashSock);
 }
 
 int sendRoutingTable(routingTable *rt, int sock, struct sockaddr_in *neighborAdr) {
@@ -115,7 +90,7 @@ int recvRoutingTable(int sock, routingTable *rt) {
     }
   }
 
-  return 0;
+  return ntohs(neighborAdr.sin_port);
 }
 
 void findNeighborAndSendRoutingTable(routingTable *rt, int mySock) {
@@ -145,7 +120,7 @@ int main(int argc, char const *argv[])
   memset(message, 0, BUF_SIZE);
 
   sprintf(message, "\"ip\": \"%s\"", argv[1]);
-  sendtoDashboard("HELLO", message, atoi(argv[2]));
+  sendHello(atoi(argv[2]),argv[1]);
 
   routingTable rt;
   createRoutingTable(&rt, argv[1], argv[2]);
@@ -184,12 +159,18 @@ int main(int argc, char const *argv[])
     }
     if (selectValue == 0) {
       findNeighborAndSendRoutingTable(&rt, mySock);
+      sendHello(atoi(argv[2]),argv[1]);
       continue;
 
     }
     if (FD_ISSET(mySock, &readfds)) {
+      int neighborPort = recvRoutingTable(mySock, &rt);
+      if (neighborPort == EXIT_FAILURE) {
+        fprintf(stderr, "[ROUTEUR] : Err recv entries\n");
+        continue;
+      }
+      sendLinkUp(atoi(argv[2]),neighborPort-NO_BASE_PORT);
       display_routingTable(&rt);
-      recvRoutingTable(mySock, &rt);
     }
   }
   return 1;

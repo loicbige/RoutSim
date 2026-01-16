@@ -31,5 +31,6 @@ void init_routingTable(routingTable * rt, char * fileConfig);
 int add_routingTable(routingTable *rt,char *entry);
 void display_routingTable(routingTable *rt);
 bool isInRoutingTable(routingTable *rt,char *entry);
+bool isMyRoutingAdress(const char* ip, const uint16_t port,const char *entry);
 bool searchInRoutingTable(routingTable *rt, char*entry);
 #endif

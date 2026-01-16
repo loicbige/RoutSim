@@ -36,6 +36,18 @@ void init_routingTable(routingTable * rt, char * fileConfig) {
 
     fclose(fc);
 }
+bool isMyRoutingAdress(const char* ip, const uint16_t port,const char *entry) {
+    char dest[MAX_IP_SIZE];
+    uint16_t destPort;
+    uint16_t weight;
+    uint8_t type;
+
+    sscanf(entry, "%s %hu %hu %hhu", dest, &destPort, &weight, &type);
+
+    return strcmp(ip, entry) == 0 && destPort == port;
+}
+
+
 bool isEntryEquals(entry *e,char *entry) {
     char dest[MAX_IP_SIZE];
     uint16_t destPort;

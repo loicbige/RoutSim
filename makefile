@@ -56,4 +56,5 @@ mrproper: clean
 
 # Dépendances (à adapter selon tes fichiers)
 $(OBJ_DIR)/tabrout.o: $(LIB_DIR)/tabrout.h
+$(OBJ_DIR)/routP.o: $(LIB_DIR)/dashboard.h
 $(OBJ_DIR)/routP.o: $(LIB_DIR)/tabrout.h
