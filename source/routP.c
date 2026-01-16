@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h> // struct sockaddr_in
-#include <time.h>
+#include <sys/time.h>
 #include <sys/select.h>
 #include <stdbool.h>
 
@@ -18,7 +18,12 @@
 
 #define NO_BASE_PORT 17900
 
+long now(void) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec;
 
+}
 void createRoutingTable(routingTable *myRoutingTable, const char *adr, const char *id)
 {
 
@@ -39,14 +44,16 @@ void createRoutingTable(routingTable *myRoutingTable, const char *adr, const cha
 }
 
 int sendRoutingTable(const routingTable *rt, int const sock, struct sockaddr_in *neighborAdr) {
+  if (rt->nb_entry == 0) {
+    fprintf(stderr,"[ROUTER] : can't send, the routing table is empty...\n");
+    return EXIT_FAILURE;
+  }
+
   if (sendto(sock, rt, sizeof(*rt), 0, (struct sockaddr *)neighborAdr, sizeof(struct sockaddr_in)) < 0) {
     perror("[ROUTER] : sendto()");
     return EXIT_FAILURE;
   }
-  else {
-    fprintf(stderr,"[ROUTER] : can't send, the routing table is empty...\n");
-    return EXIT_FAILURE;
-  }
+
   return EXIT_SUCCESS;
 }
 
@@ -118,12 +125,35 @@ int main(const int argc, char const *argv[])
     perror("bind");
     exit(EXIT_FAILURE);
   }
-
+  long next_ping = now();
+  long next_sendrt = now();
   while (true) {
+    long t = now();
+
+    if (t >= next_sendrt) {
+      findNeighborAndSendRoutingTable(&rt, mySock);
+      next_sendrt = t + 5;
+    }
+
+    if (t >= next_ping) {
+      sendHello(atoi(argv[2]), argv[1]);
+      next_ping = t + 5;
+    }
+
+    long long const next = (next_ping < next_sendrt) ? next_ping : next_sendrt;
+    long long wait = next - now();
+    if (wait < 0) wait = 0;
+
+
     fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(mySock, &readfds);
-    struct timeval tv = {5,0} ;
+
+    struct timeval tv;
+    tv.tv_sec  = (wait > 5) ? 5 : (time_t)wait;
+    tv.tv_usec = 0;
+
+
     int const selectValue = select(mySock+1, &readfds, NULL, NULL, &tv);
 
 
@@ -131,12 +161,8 @@ int main(const int argc, char const *argv[])
       perror("select");
       continue;
     }
-    if (selectValue == 0) {
-      findNeighborAndSendRoutingTable(&rt, mySock);
-      sendHello(atoi(argv[2]),argv[1]);
-      continue;
 
-    }
+
     if (FD_ISSET(mySock, &readfds)) {
       int const neighborPort = recvRoutingTable(mySock, &rt);
       if (neighborPort == EXIT_FAILURE) {
