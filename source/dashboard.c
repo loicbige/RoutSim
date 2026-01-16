@@ -20,7 +20,7 @@ int loadDashboardConf(int *dashSock, struct sockaddr_in *dashAdr) {
 
     dashAdr->sin_family = AF_INET;
     dashAdr->sin_port = htons(DASHBOARD_PORT);
-    if (inet_pton(AF_INET, DASHBOARD_IP,&dashAdr->sin_addr) == 0) {
+    if (inet_pton(AF_INET, DASHBOARD_IP,&dashAdr->sin_addr) != 1) {
         perror("[DASHBOARD] : inet_aton");
         return EXIT_FAILURE;
     }
@@ -30,8 +30,11 @@ int loadDashboardConf(int *dashSock, struct sockaddr_in *dashAdr) {
 int sendHello(const int id, const char* ip) {
     struct sockaddr_in dashAdr = {0};
     int dashSock;
+    if (loadDashboardConf(&dashSock, &dashAdr) != EXIT_SUCCESS) {
+        close(dashSock);
+        return EXIT_FAILURE;
+    }
 
-    loadDashboardConf(&dashSock, &dashAdr);
     char buffer[DASHBOARD_MESSAGE_LENGTH];
     sprintf(buffer,"{\"id\": \"R%d\", \"type\": \"PING\",\"ip\": \"%s\"}",id,ip);
     if (sendto(dashSock, buffer, strlen(buffer),0,(struct sockaddr *)&dashAdr, sizeof(struct sockaddr_in))<0) {
@@ -47,9 +50,12 @@ int sendHello(const int id, const char* ip) {
 
 int sendLinkUp(const int id1, const int id2) {
 
-    struct sockaddr_in dashAdr;
+    struct sockaddr_in dashAdr = {0};
     int dashSock;
-    loadDashboardConf(&dashSock, &dashAdr);
+    if (loadDashboardConf(&dashSock, &dashAdr) != EXIT_SUCCESS) {
+        close(dashSock);
+        return EXIT_FAILURE;
+    }
 
     char buffer[DASHBOARD_MESSAGE_LENGTH];
     sprintf(buffer, "{\"type\": \"LINK\",\"from\": \"R%d\",\"to\": \"R%d\",\"status\": \"UP\"}",id1,id2 );
@@ -66,7 +72,10 @@ int sendLinkUp(const int id1, const int id2) {
 int sendLinkDown(const int id1, const int id2) {
     struct sockaddr_in dashAdr = {0};
     int dashSock;
-    loadDashboardConf(&dashSock, &dashAdr);
+    if (loadDashboardConf(&dashSock, &dashAdr) != EXIT_SUCCESS) {
+        close(dashSock);
+        return EXIT_FAILURE;
+    }
 
     char buffer[DASHBOARD_MESSAGE_LENGTH];
     sprintf(buffer, "{\"type\": \"LINK\",\"from\": \"R%d\",\"to\": \"R%d\",\"status\": \"DOWN\"}",id1,id2 );

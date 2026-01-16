@@ -14,7 +14,7 @@ void init_routingTable(routingTable * rt, char * fileConfig) {
     }
     memset(rt, 0, sizeof(routingTable));
     printf("\n[ROUTEUR] : Loading Configuration intiale\n");
-    fscanf(fc, "%hu", &(rt->nb_entry));
+    fscanf(fc, "%hhu", &(rt->nb_entry));
 
     char dest[MAX_IP_SIZE];
 
@@ -99,10 +99,18 @@ int add_routingTable(routingTable *rt,char *entry)
 }
 
 
+void displayEntry(entry *e) {
+    uint8_t type = e->type;
+    printf("[%s]:%hu weight : %hu & type=%hhu\n",
+        e->destination,
+        e->port,
+        e->weight,
+        type);
+}
+
 void display_routingTable(routingTable *rt) {
     for (int i = 0; i < rt->nb_entry; i++) {
-        uint8_t type = rt->entries[i].type;
-        printf("[%s]:%hu weight : %hu & type=%hhu\n",rt->entries[i].destination,rt->entries[i].port, rt->entries[i].weight, type);
+        displayEntry(&rt->entries[i]);
 
     }
     printf("\n");

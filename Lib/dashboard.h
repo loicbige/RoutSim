@@ -6,7 +6,7 @@
 #define ROUTSIM_DASHBOARD_H
 
 #define DASHBOARD_PORT 8080
-#define DASHBOARD_IP "127.0.0.1"
+#define DASHBOARD_IP "192.168.1.182"
 #define DASHBOARD_MESSAGE_LENGTH 128
 #include "tabrout.h"
 int sendHello(const int id, const char* ip);

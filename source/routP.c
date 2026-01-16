@@ -40,16 +40,25 @@ void createRoutingTable(routingTable *myRoutingTable, const char *adr, const cha
 
 int sendRoutingTable(routingTable *rt, int sock, struct sockaddr_in *neighborAdr) {
 
+
+  uint8_t nbEntry = rt->nb_entry-1;
   if (neighborAdr != NULL) {
-    if (sendto(sock,&rt->nb_entry, sizeof(rt->nb_entry), 0, (struct sockaddr *)neighborAdr, sizeof(struct sockaddr_in)) < 0) {
+    if (sendto(sock,&nbEntry, sizeof(nbEntry), 0, (struct sockaddr *)neighborAdr, sizeof(struct sockaddr_in)) < 0) {
       perror("[ROUTER] : sendto nbentry");
       exit(EXIT_FAILURE);
     }
     char buff[BUF_SIZE];
     memset(buff, 0, BUF_SIZE);
-    for (int i = 0; i < rt->nb_entry; i++) {
+    for (int i = 1; i <= nbEntry; i++) {
       memset(buff, 0, BUF_SIZE);
-      snprintf(buff, BUF_SIZE, "%s %hu %hu %hhu", rt->entries[i].destination, rt->entries[i].port, rt->entries[i].weight, (uint8_t)rt->entries[i].type);
+      snprintf(buff, BUF_SIZE, "%s %hu %hu %hhu",
+        rt->entries[i].destination,
+        rt->entries[i].port,
+        rt->entries[i].weight,
+        (uint8_t)rt->entries[i].type);
+      printf("DISPLAY DEBUG\n\n\n");
+      displayEntry(&rt->entries[i]);
+      printf("DISPLAY DEBUG\n\n\n");
       if (sendto(sock, buff,strlen(buff),0, (struct sockaddr *)neighborAdr,sizeof(struct sockaddr_in)) < 0) {
         perror("[ROUTER] : sendto loop");
         exit(EXIT_FAILURE);

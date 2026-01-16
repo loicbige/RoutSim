@@ -20,7 +20,7 @@ typedef struct s_Entry {
 }entry;
 
 typedef struct {
-    unsigned short int nb_entry;
+    uint8_t nb_entry;
     entry entries[NB_MAX_ENTRY];
 } routingTable;
 
@@ -30,6 +30,7 @@ typedef struct {
 void init_routingTable(routingTable * rt, char * fileConfig);
 int add_routingTable(routingTable *rt,char *entry);
 void display_routingTable(routingTable *rt);
+void displayEntry(entry *e);
 bool isInRoutingTable(routingTable *rt,char *entry);
 bool isMyRoutingAdress(const char* ip, const uint16_t port,const char *entry);
 bool searchInRoutingTable(routingTable *rt, char*entry);
